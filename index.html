@@ -42,7 +42,7 @@
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             padding: 10px 18px;
-            border-radius: 35px; /* Bo tròn mạnh tay */
+            border-radius: 35px;
             display: flex;
             align-items: center;
             gap: 16px;
@@ -53,7 +53,7 @@
         .action-btn {
             width: 52px;
             height: 52px;
-            border-radius: 16px; /* Hình vuông bo tròn góc */
+            border-radius: 16px;
             border: none;
             background: #ffffff;
             color: #1e293b;
@@ -90,7 +90,7 @@
             white-space: nowrap;
         }
 
-        /* 3. MODAL POPUP TOÀN MÀN HÌNH VỚI HIỆU ỨNG BUNG NẢY (Spring Animation) */
+        /* 3. MODAL POPUP TOÀN MÀN HÌNH VỚI HIỆU ỨNG BUNG NẢY */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -114,7 +114,6 @@
             pointer-events: auto;
         }
 
-        /* Khung bảng trắng bên trong Modal */
         .modal-card {
             width: 88%;
             max-width: 380px;
@@ -123,7 +122,6 @@
             padding: 35px 25px;
             text-align: center;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            /* Hiệu ứng nảy từ nhỏ ra toàn màn hình */
             transform: scale(0.2) translateY(100px);
             transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1.15);
             position: relative;
@@ -133,7 +131,6 @@
             transform: scale(1) translateY(0);
         }
 
-        /* Nút đóng (X) */
         .modal-close-btn {
             position: absolute;
             top: 18px;
@@ -190,6 +187,22 @@
             font-weight: 700;
             margin-top: 5px;
         }
+
+        /* Hiệu ứng nhấp nháy phát sáng cho Icon GPS kiểu CMD Health */
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+            70% { transform: scale(1.15); box-shadow: 0 0 0 14px rgba(37, 99, 235, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+
+        /* Tùy chỉnh bảng chọn Layer góc trên phải */
+        .leaflet-control-layers {
+            border-radius: 16px !important;
+            padding: 10px 14px !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+            font-weight: 600;
+            border: none !important;
+        }
     </style>
 </head>
 <body>
@@ -232,51 +245,134 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Khởi tạo Bản đồ Leaflet (Tâm mặc định ở Hà Nội)
+        // --- 1. KHỞI TẠO BẢN ĐỒ & LAYER 0 (NỀN GOOGLE MAPS) ---
         const map = L.map('map', { zoomControl: false }).setView([21.028511, 105.804817], 15);
 
-        // 2. Load Tile Layer Google Maps Roadmap
-        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        // Layer 0: Bản đồ nền Google Maps Roadmap
+        const layer0_GoogleMaps = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             attribution: '&copy; Google Maps'
         }).addTo(map);
 
+        // --- 2. LAYER 1: CÁC ĐIỂM TRẠM CỨU HỎA ---
+        const layer1_FireStations = L.layerGroup().addTo(map);
+
+        const fireStationsData = [
+            { name: "Trạm PCCC Hoàn Kiếm", lat: 21.028511, lng: 105.8522, address: "Hai Bà Trưng, Hoàn Kiếm, Hà Nội" },
+            { name: "Trạm PCCC Đống Đa", lat: 21.0182, lng: 105.8285, address: "Đoàn Thị Điểm, Đống Đa, Hà Nội" },
+            { name: "Trạm PCCC Cầu Giấy", lat: 21.0362, lng: 105.7905, address: "Thành Thái, Cầu Giấy, Hà Nội" }
+        ];
+
+        fireStationsData.forEach(st => {
+            const fireIcon = L.divIcon({
+                className: 'custom-fire-icon',
+                html: `<div style="font-size: 26px; filter: drop-shadow(0 3px 6px rgba(220,38,38,0.5));">🚒</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+            L.marker([st.lat, st.lng], { icon: fireIcon })
+                .bindPopup(`<b>🚒 ${st.name}</b><br><span style="font-size: 12px; color: #555;">📍 ${st.address}</span>`)
+                .addTo(layer1_FireStations);
+        });
+
+        // --- 3. LAYER 2: BỀ MẶT NƯỚC & NGUỒN NƯỚC PCCC ---
+        const layer2_WaterSources = L.layerGroup().addTo(map);
+
+        const waterSourcesData = [
+            { name: "Trụ nước PCCC #01 - Văn Miếu", lat: 21.0292, lng: 105.8355, type: "Trụ nước cứu hỏa", status: "Sẵn sàng" },
+            { name: "Bể nước cứu hỏa Phường - Điểm lấy nước", lat: 21.0250, lng: 105.8120, type: "Nguồn nước tập trung", status: "Trữ lượng lớn" },
+            { name: "Trụ nước PCCC #02 - Cầu Giấy", lat: 21.0330, lng: 105.7950, type: "Trụ nước cứu hỏa", status: "Hoạt động tốt" }
+        ];
+
+        waterSourcesData.forEach(ws => {
+            const waterIcon = L.divIcon({
+                className: 'custom-water-icon',
+                html: `<div style="font-size: 24px; filter: drop-shadow(0 3px 6px rgba(37,99,235,0.5));">💧</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+            L.marker([ws.lat, ws.lng], { icon: waterIcon })
+                .bindPopup(`<b>💧 ${ws.name}</b><br><span style="font-size: 12px; color: #1e40af;">Loại: ${ws.type}<br>Trạng thái: ${ws.status}</span>`)
+                .addTo(layer2_WaterSources);
+        });
+
+        // --- 4. BỘ QUẢN LÝ CÁC LỚP BẢN ĐỒ (LAYER CONTROL) ---
+        const overlayLayers = {
+            "🚒 Layer 1: Trạm PCCC": layer1_FireStations,
+            "💧 Layer 2: Bề mặt nước / Nguồn nước": layer2_WaterSources
+        };
+        L.control.layers(null, overlayLayers, { position: 'topright', collapsed: false }).addTo(map);
+
+        // --- 5. ĐỊNH VỊ GPS PHONG CÁCH CMD HEALTH ---
         let userMarker = null;
+        let userAccuracyCircle = null;
 
-        // 3. Xử lý nút 1: Định vị GPS hiện tại của thiết bị
         function handleGPSClick() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        // Bay mượt về vị trí thiết bị
-                        map.flyTo([lat, lng], 17, { animate: true, duration: 1.5 });
-
-                        if (!userMarker) {
-                            userMarker = L.marker([lat, lng]).addTo(map);
-                        } else {
-                            userMarker.setLatLng([lat, lng]);
-                        }
-                        userMarker.bindPopup("<b>📍 Vị trí hiện tại của bạn</b>").openPopup();
-
-                        // Bật Modal thông báo
-                        openModal('Định vị GPS thành công', '📍');
-                    },
-                    (error) => {
-                        openModal('Định vị GPS', '📍');
-                        alert("Không thể lấy vị trí. Vui lòng bật định vị/GPS trên thiết bị!");
-                    }
-                );
-            } else {
+            if (!navigator.geolocation) {
                 openModal('Định vị GPS', '📍');
                 alert("Trình duyệt không hỗ trợ Geolocation!");
+                return;
             }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    // Bay mượt về vị trí thiết bị
+                    map.flyTo([lat, lng], 17, { animate: true, duration: 1.5 });
+
+                    // Marker chấm xanh phát sáng kiểu CMD Health
+                    const gpsIcon = L.divIcon({
+                        className: 'cmd-gps-icon',
+                        html: `<div style="width: 22px; height: 22px; background: #2563eb; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 12px rgba(37,99,235,0.8); animation: pulse 1.8s infinite;"></div>`,
+                        iconSize: [22, 22],
+                        iconAnchor: [11, 11]
+                    });
+
+                    if (!userMarker) {
+                        userMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+                    } else {
+                        userMarker.setLatLng([lat, lng]);
+                    }
+
+                    // Vòng tròn bán kính độ chính xác GPS
+                    if (!userAccuracyCircle) {
+                        userAccuracyCircle = L.circle([lat, lng], {
+                            radius: accuracy,
+                            color: '#2563eb',
+                            fillColor: '#60a5fa',
+                            fillOpacity: 0.2,
+                            weight: 1.5
+                        }).addTo(map);
+                    } else {
+                        userAccuracyCircle.setLatLng([lat, lng]);
+                        userAccuracyCircle.setRadius(accuracy);
+                    }
+
+                    userMarker.bindPopup(`
+                        <div style="text-align: center;">
+                            <b>📍 Vị trí GPS hiện tại</b><br>
+                            <span style="font-size: 11px; color: #475569;">
+                                Tọa độ: ${lat.toFixed(5)}, ${lng.toFixed(5)}<br>
+                                Độ chính xác: ~${Math.round(accuracy)}m
+                            </span>
+                        </div>
+                    `).openPopup();
+
+                    openModal('Định vị GPS thành công', '📍');
+                },
+                (error) => {
+                    openModal('Định vị GPS', '📍');
+                    alert("Không thể lấy vị trí. Vui lòng bật định vị/GPS trên thiết bị!");
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
         }
 
-        // 4. Mở & Đóng Popup Modal với hiệu ứng nảy
+        // --- 6. MỞ & ĐÓNG POPUP MODAL VỚI HIỆU ỨNG NẢY ---
         function openModal(title, icon) {
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalIcon').innerText = icon;
