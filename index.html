@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bản đồ An toàn PCCC & Cứu hộ - Web Base</title>
+    
+    <!-- Nhúng thư viện CSS của Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* Reset CSS cơ bản */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f5f5f7;
+        }
+
+        /* Khung hiển thị bản đồ chiếm toàn màn hình */
+        #map {
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* 1. KHUNG CHỨA NÚT CHỨC NĂNG DƯỚI ĐÁY (Thanh ngang bo tròn mạnh tay / Pill Shape) */
+        .bottom-action-bar {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 10px 18px;
+            border-radius: 35px; /* Bo tròn mạnh tay */
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+        }
+
+        /* 2. CÁC NÚT CHỨC NĂNG HÌNH VUÔNG BO TRÒN GÓC */
+        .action-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px; /* Hình vuông bo tròn góc */
+            border: none;
+            background: #ffffff;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-3px) scale(1.06);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            background: #f8fafc;
+        }
+
+        .action-btn:active {
+            transform: scale(0.92);
+        }
+
+        .action-btn .btn-icon {
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        .action-btn .btn-label {
+            font-size: 9px;
+            font-weight: 700;
+            margin-top: 3px;
+            color: #475569;
+            white-space: nowrap;
+        }
+
+        /* 3. MODAL POPUP TOÀN MÀN HÌNH VỚI HIỆU ỨNG BUNG NẢY (Spring Animation) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Khung bảng trắng bên trong Modal */
+        .modal-card {
+            width: 88%;
+            max-width: 380px;
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 35px 25px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            /* Hiệu ứng nảy từ nhỏ ra toàn màn hình */
+            transform: scale(0.2) translateY(100px);
+            transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1.15);
+            position: relative;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Nút đóng (X) */
+        .modal-close-btn {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+            transform: rotate(90deg);
+        }
+
+        .modal-icon-badge {
+            width: 72px;
+            height: 72px;
+            border-radius: 22px;
+            background: #eff6ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 12px;
+        }
+
+        .modal-status-tag {
+            display: inline-block;
+            background: #fff7ed;
+            color: #ea580c;
+            border: 1px solid #ffedd5;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Khung Bản đồ Google Maps -->
+    <div id="map"></div>
+
+    <!-- Thanh khung ngang bo tròn mạnh chứa 3 nút chức năng -->
+    <div class="bottom-action-bar">
+        <!-- Nút 1: Định vị GPS hiện tại -->
+        <button class="action-btn" onclick="handleGPSClick()" title="Định vị GPS">
+            <span class="btn-icon">📍</span>
+            <span class="btn-label">GPS</span>
+        </button>
+
+        <!-- Nút 2: Đóng góp cộng đồng (PPGIS) -->
+        <button class="action-btn" onclick="openModal('Đóng góp cộng đồng (PPGIS)', '🤝')" title="Đóng góp cộng đồng">
+            <span class="btn-icon">🤝</span>
+            <span class="btn-label">Cộng đồng</span>
+        </button>
+
+        <!-- Nút 3: Chấm điểm an toàn tọa độ PCCC -->
+        <button class="action-btn" onclick="openModal('Chấm điểm An toàn PCCC', '🛡️')" title="Chấm điểm tọa độ">
+            <span class="btn-icon">🛡️</span>
+            <span class="btn-label">Chấm điểm</span>
+        </button>
+    </div>
+
+    <!-- Bảng Modal trắng bung nảy toàn màn hình -->
+    <div class="modal-overlay" id="featureModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-card">
+            <button class="modal-close-btn" onclick="closeModal()">✕</button>
+            <div class="modal-icon-badge" id="modalIcon">✨</div>
+            <h2 class="modal-title" id="modalTitle">Tên tính năng</h2>
+            <div class="modal-status-tag">sẽ sớm được cập nhật</div>
+        </div>
+    </div>
+
+    <!-- Nhúng thư viện JavaScript của Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // 1. Khởi tạo Bản đồ Leaflet (Tâm mặc định ở Hà Nội)
+        const map = L.map('map', { zoomControl: false }).setView([21.028511, 105.804817], 15);
+
+        // 2. Load Tile Layer Google Maps Roadmap
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        }).addTo(map);
+
+        let userMarker = null;
+
+        // 3. Xử lý nút 1: Định vị GPS hiện tại của thiết bị
+        function handleGPSClick() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Bay mượt về vị trí thiết bị
+                        map.flyTo([lat, lng], 17, { animate: true, duration: 1.5 });
+
+                        if (!userMarker) {
+                            userMarker = L.marker([lat, lng]).addTo(map);
+                        } else {
+                            userMarker.setLatLng([lat, lng]);
+                        }
+                        userMarker.bindPopup("<b>📍 Vị trí hiện tại của bạn</b>").openPopup();
+
+                        // Bật Modal thông báo
+                        openModal('Định vị GPS thành công', '📍');
+                    },
+                    (error) => {
+                        openModal('Định vị GPS', '📍');
+                        alert("Không thể lấy vị trí. Vui lòng bật định vị/GPS trên thiết bị!");
+                    }
+                );
+            } else {
+                openModal('Định vị GPS', '📍');
+                alert("Trình duyệt không hỗ trợ Geolocation!");
+            }
+        }
+
+        // 4. Mở & Đóng Popup Modal với hiệu ứng nảy
+        function openModal(title, icon) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalIcon').innerText = icon;
+            document.getElementById('featureModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('featureModal').classList.remove('active');
+        }
+
+        function closeModalOnOverlay(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
