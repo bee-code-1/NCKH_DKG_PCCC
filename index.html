@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>pccc_tuat</title>
+    <title>Bản đồ An toàn PCCC & Cứu hộ - Web Base</title>
     
     <!-- Nhúng thư viện CSS của Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -31,7 +31,7 @@
             z-index: 1;
         }
 
-        /* 1. KHUNG CHỨA NÚT CHỨC NĂNG DƯỚI ĐÁY (Thanh ngang bo tròn mạnh / Pill Shape) */
+        /* 1. KHUNG CHỨA NÚT CHỨC NĂNG DƯỚI ĐÁY */
         .bottom-action-bar {
             position: fixed;
             bottom: 25px;
@@ -96,7 +96,7 @@
             white-space: nowrap;
         }
 
-        /* 3. TÂM NGẮM Ở GIỮA MÀN HÌNH (Crosshair Overlay) */
+        /* 3. TÂM NGẮM Ở GIỮA MÀN HÌNH */
         .crosshair-overlay {
             position: fixed;
             top: 50%;
@@ -136,7 +136,7 @@
             transform: translate(-50%, -50%);
         }
 
-        /* 4. THANH ĐIỀU KHIỂN KHI BẬT TÂM NGẮM (Top Control Bar) */
+        /* 4. THANH ĐIỀU KHIỂN KHI BẬT TÂM NGẮM */
         .collector-top-bar {
             position: fixed;
             top: 20px;
@@ -453,6 +453,7 @@
 
         .badge-pccc { background: #fee2e2; color: #dc2626; }
         .badge-water { background: #dbeafe; color: #2563eb; }
+        .badge-hospital { background: #dcfce7; color: #16a34a; }
         .badge-water-surface { background: #e0f2fe; color: #0284c7; }
         .badge-alley { background: #ffedd5; color: #ea580c; }
 
@@ -564,8 +565,8 @@
             <h3 class="modal-title">📌 Thêm Điểm Mới</h3>
             
             <div class="form-group">
-                <label class="form-label">Tên địa điểm / Tên họng nước</label>
-                <input type="text" id="pointNameInput" class="form-input" placeholder="Ví dụ: Trụ nước hẻm 45..." />
+                <label class="form-label">Tên địa điểm / Tên họng nước / Tên bệnh viện</label>
+                <input type="text" id="pointNameInput" class="form-input" placeholder="Ví dụ: Bệnh viện Bạch Mai, Trụ nước hẻm 45..." />
             </div>
 
             <div class="form-group">
@@ -583,6 +584,10 @@
                     <label class="radio-option">
                         <input type="radio" name="pointCategory" value="water_point" />
                         <span>💧 Điểm cấp nước (Trụ/Họng nước)</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="pointCategory" value="hospital" />
+                        <span>🏥 Bệnh viện / Cơ sở y tế</span>
                     </label>
                 </div>
             </div>
@@ -638,12 +643,12 @@
 
             <!-- Danh sách Điểm -->
             <div class="data-list-container" id="pointsListContainer">
-                <!-- Javascript sẽ tự động điền danh sách ở đây -->
+                <!-- JS sẽ tự động render danh sách -->
             </div>
 
             <!-- Danh sách Vùng -->
             <div class="data-list-container" id="regionsListContainer" style="display: none;">
-                <!-- Javascript sẽ tự động điền danh sách ở đây -->
+                <!-- JS sẽ tự động render danh sách -->
             </div>
         </div>
     </div>
@@ -667,7 +672,7 @@
     <!-- Thư viện Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<script>
+    <script>
         // ==========================================
         // 1. CẤU HÌNH FIREBASE & BỘ LƯU TRỮ LOCAL
         // ==========================================
@@ -686,7 +691,7 @@
                 console.log("🔥 Đã kết nối thành công Firebase Realtime Database!");
             }
         } catch (e) {
-            console.warn("⚠️ Lỗi kết nối Firebase, tự động chuyển sang dùng LocalStorage dự phòng.", e);
+            console.warn("⚠️ Lỗi kết nối Firebase, tự động dùng LocalStorage dự phòng.", e);
         }
 
         // ==========================================
@@ -780,8 +785,8 @@
         // 4. CHỨC NĂNG TÂM NGẮM & THU THẬP ĐIỂM / VÙNG
         // ==========================================
         let isCollectModeActive = false;
-        let currentCollectMode = 'point'; // 'point' hoặc 'region'
-        let polygonVertices = []; // Danh sách tọa độ đỉnh khi chọn vùng
+        let currentCollectMode = 'point';
+        let polygonVertices = [];
         let tempPolyline = null;
         let pendingPointCoords = null;
 
@@ -830,7 +835,6 @@
             }
         }
 
-        // CHỌN ĐIỂM: Xác nhận vị trí tại tâm ngắm
         function confirmPointSelection() {
             const center = map.getCenter();
             pendingPointCoords = { lat: center.lat, lng: center.lng };
@@ -840,12 +844,10 @@
             openModal('savePointModal');
         }
 
-        // CHỌN VÙNG: Thêm đỉnh tại vị trí tâm ngắm
         function addPolygonVertex() {
             const center = map.getCenter();
             polygonVertices.push([center.lat, center.lng]);
 
-            // Vẽ Marker chấm nhỏ tại đỉnh
             const vertexMarker = L.circleMarker([center.lat, center.lng], {
                 radius: 5,
                 color: '#2563eb',
@@ -855,7 +857,6 @@
             });
             drawTempGroup.addLayer(vertexMarker);
 
-            // Vẽ đường nối tạm thời
             if (polygonVertices.length > 1) {
                 if (tempPolyline) drawTempGroup.removeLayer(tempPolyline);
                 tempPolyline = L.polyline(polygonVertices, { color: '#2563eb', weight: 2.5, dashArray: '6, 6' });
@@ -877,7 +878,6 @@
             updateRegionStatusText();
         }
 
-        // CHỌN VÙNG: Hoàn tất nối n điểm khép kín
         function finishPolygonRegion() {
             if (polygonVertices.length < 3) {
                 alert("Vui lòng chọn ít nhất 3 đỉnh để tạo thành một vùng khép kín!");
@@ -920,7 +920,6 @@
             const name = document.getElementById('regionNameInput').value.trim() || "Vùng chưa đặt tên";
             const category = document.querySelector('input[name="regionCategory"]:checked').value;
 
-            // Nối điểm cuối trùng điểm đầu để đảm bảo vòng tròn khép kín 100%
             const closedVertices = [...polygonVertices];
             if (closedVertices[0][0] !== closedVertices[closedVertices.length - 1][0] ||
                 closedVertices[0][1] !== closedVertices[closedVertices.length - 1][1]) {
@@ -947,7 +946,6 @@
             alert("✅ Đã lưu vùng khép kín thành công!");
         }
 
-        // Dự phòng LocalStorage nếu chưa có Firebase Key
         function saveToLocalStorage(key, item) {
             const existing = JSON.parse(localStorage.getItem('pccc_' + key) || '[]');
             existing.push(item);
@@ -972,7 +970,9 @@
             savedRegionsGroup.clearLayers();
 
             if (isFirebaseConnected && db) {
-                db.ref('pccc_data').once('value', (snapshot) => {
+                db.ref('pccc_data').on('value', (snapshot) => {
+                    savedPointsGroup.clearLayers();
+                    savedRegionsGroup.clearLayers();
                     const data = snapshot.val() || {};
                     renderPoints(Object.values(data.points || {}));
                     renderRegions(Object.values(data.regions || {}));
@@ -985,15 +985,24 @@
 
         function renderPoints(pointsList) {
             pointsList.forEach(pt => {
-                const isPCCC = pt.category === 'pccc_station';
-                const iconHtml = isPCCC ? '🚒' : '💧';
-                const label = isPCCC ? 'Trạm PCCC' : 'Điểm cấp nước';
+                let iconHtml = '📍';
+                let label = 'Điểm thu thập';
+                if (pt.category === 'pccc_station') {
+                    iconHtml = '🚒';
+                    label = 'Trạm PCCC';
+                } else if (pt.category === 'water_point') {
+                    iconHtml = '💧';
+                    label = 'Điểm cấp nước';
+                } else if (pt.category === 'hospital') {
+                    iconHtml = '🏥';
+                    label = 'Bệnh viện / Cơ sở y tế';
+                }
 
                 const customIcon = L.divIcon({
                     className: 'custom-data-point-icon',
                     html: `<div style="font-size: 24px; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));">${iconHtml}</div>`,
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 13]
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
                 });
 
                 L.marker([pt.lat, pt.lng], { icon: customIcon })
@@ -1042,12 +1051,6 @@
         }
 
         function renderDataManagementLists() {
-            const pointsContainer = document.getElementById('pointsListContainer');
-            const regionsContainer = document.getElementById('regionsListContainer');
-
-            const points = isFirebaseConnected ? [] : getFromLocalStorage('points');
-            const regions = isFirebaseConnected ? [] : getFromLocalStorage('regions');
-
             if (isFirebaseConnected && db) {
                 db.ref('pccc_data').once('value', (snapshot) => {
                     const data = snapshot.val() || {};
@@ -1055,8 +1058,8 @@
                     fillRegionsList(Object.values(data.regions || {}));
                 });
             } else {
-                fillPointsList(points);
-                fillRegionsList(regions);
+                fillPointsList(getFromLocalStorage('points'));
+                fillRegionsList(getFromLocalStorage('regions'));
             }
         }
 
@@ -1068,9 +1071,19 @@
             }
 
             container.innerHTML = points.map(pt => {
-                const isPCCC = pt.category === 'pccc_station';
-                const badgeClass = isPCCC ? 'badge-pccc' : 'badge-water';
-                const badgeText = isPCCC ? '🚒 Trạm PCCC' : '💧 Điểm cấp nước';
+                let badgeClass = 'badge-water';
+                let badgeText = '📍 Điểm';
+
+                if (pt.category === 'pccc_station') {
+                    badgeClass = 'badge-pccc';
+                    badgeText = '🚒 Trạm PCCC';
+                } else if (pt.category === 'water_point') {
+                    badgeClass = 'badge-water';
+                    badgeText = '💧 Điểm cấp nước';
+                } else if (pt.category === 'hospital') {
+                    badgeClass = 'badge-hospital';
+                    badgeText = '🏥 Bệnh viện';
+                }
 
                 return `
                     <div class="data-item-card">
@@ -1157,7 +1170,6 @@
             }
         }
 
-        // Tải dữ liệu ban đầu khi khởi chạy trang web
         window.onload = function() {
             loadAndRenderData();
         };
