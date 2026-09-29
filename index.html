@@ -885,8 +885,8 @@
                     const gpsIcon = L.divIcon({
                         className: 'cmd-gps-icon',
                         html: `<div style="width: 22px; height: 22px; background: #2563eb; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 12px rgba(37,99,235,0.8); animation: pulse 1.8s infinite;"></div>`,
-                        iconSize:,
-                        iconAnchor:
+                        iconSize: [22, 22],
+                        iconAnchor: [11, 11]
                     });
 
                     if (!userMarker) {
@@ -1202,10 +1202,10 @@
                     if (d < minDistFireStation) minDistFireStation = d;
                 });
             } else {
-                minDistFireStation = 2.5; // Mặc định giả định 2.5km nếu chưa thu thập
+                minDistFireStation = 2.5; // Mặc định 2.5km nếu chưa có dữ liệu
             }
 
-            // 2. Khoảng cách đến Nguồn nước gần nhất (Họng nước hoặc Bề mặt nước)
+            // 2. Khoảng cách đến Nguồn nước gần nhất
             const waterPoints = points.filter(p => p.category === 'water_point');
             let minDistWater = 999; // meters
             if (waterPoints.length > 0) {
@@ -1214,7 +1214,7 @@
                     if (d < minDistWater) minDistWater = d;
                 });
             } else {
-                minDistWater = 280; // Mặc định giả định 280m
+                minDistWater = 280; // Mặc định 280m
             }
 
             // 3. Khoảng cách đến Bệnh viện gần nhất
@@ -1230,12 +1230,12 @@
             }
 
             // 4. Độ rộng ngõ gần nhất
-            let minAlleyWidth = 4.0; // Mặc định ngõ vừa
+            let minAlleyWidth = 4.0;
             if (roads.length > 0) {
                 let minDistRoad = 999;
                 roads.forEach(rd => {
                     if (rd.path && rd.path.length > 0) {
-                        const d = map.distance([targetLat, targetLng], rd.path);
+                        const d = map.distance([targetLat, targetLng], rd.path[0]);
                         if (d < minDistRoad) {
                             minDistRoad = d;
                             minAlleyWidth = rd.width || 3.0;
@@ -1245,25 +1245,21 @@
             }
 
             // --- TÍNH ĐIỂM THÀNH PHẦN (Thang 100) ---
-            // Trạm PCCC (Trọng số 35%): <1.5km = 100đ, 1.5-3km = 75đ, 3-5km = 40đ, >5km = 10đ
             let scoreFireStation = 100;
             if (minDistFireStation > 5) scoreFireStation = 10;
             else if (minDistFireStation > 3) scoreFireStation = 40;
             else if (minDistFireStation > 1.5) scoreFireStation = 75;
 
-            // Nguồn nước (Trọng số 30%): <150m = 100đ, 150-300m = 70đ, 300-500m = 40đ, >500m = 10đ
             let scoreWater = 100;
             if (minDistWater > 500) scoreWater = 10;
             else if (minDistWater > 300) scoreWater = 40;
             else if (minDistWater > 150) scoreWater = 70;
 
-            // Độ rộng ngõ (Trọng số 25%): ≥5m = 100đ, 3.5-5m = 80đ, 2-3.5m = 45đ, <2m = 15đ
             let scoreRoad = 100;
             if (minAlleyWidth < 2.0) scoreRoad = 15;
             else if (minAlleyWidth < 3.5) scoreRoad = 45;
             else if (minAlleyWidth < 5.0) scoreRoad = 80;
 
-            // Bệnh viện (Trọng số 10%): <3km = 100đ, 3-6km = 70đ, >6km = 30đ
             let scoreHospital = 100;
             if (minDistHospital > 6) scoreHospital = 30;
             else if (minDistHospital > 3) scoreHospital = 70;
@@ -1351,9 +1347,11 @@
             const category = document.querySelector('input[name="regionCategory"]:checked').value;
 
             const closedVertices = [...polygonVertices];
-            if (closedVertices !== closedVertices[closedVertices.length - 1] ||
-                closedVertices !== closedVertices[closedVertices.length - 1]) {
-                closedVertices.push(closedVertices);
+            if (closedVertices.length > 0) {
+                if (closedVertices[0][0] !== closedVertices[closedVertices.length - 1][0] ||
+                    closedVertices[0][1] !== closedVertices[closedVertices.length - 1][1]) {
+                    closedVertices.push(closedVertices[0]);
+                }
             }
 
             const regionData = {
@@ -1471,7 +1469,8 @@
                 const customIcon = L.divIcon({
                     className: 'custom-data-point-icon',
                     html: `<div style="font-size: 24px; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));">${iconHtml}</div>`,
-                    iconSize:, iconAnchor:
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
                 });
 
                 L.marker([pt.lat, pt.lng], { icon: customIcon })
@@ -1521,7 +1520,8 @@
                 const ppgisIcon = L.divIcon({
                     className: 'custom-ppgis-icon',
                     html: `<div style="font-size: 22px; filter: drop-shadow(0 3px 6px rgba(126,34,206,0.4));">${iconHtml}</div>`,
-                    iconSize:, iconAnchor:
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
                 });
 
                 L.marker([pg.lat, pg.lng], { icon: ppgisIcon })
@@ -1607,8 +1607,8 @@
                 const isWater = rg.category === 'water_surface';
                 const badgeClass = isWater ? 'badge-water-surface' : 'badge-alley';
                 const badgeText = isWater ? '🌊 Bề mặt nước' : '🏘️ Cụm dân cư ngõ nhỏ';
-                const centerLat = rg.vertices;
-                const centerLng = rg.vertices[1];
+                const centerLat = rg.vertices && rg.vertices.length > 0 ? rg.vertices[0][0] : 21.028511;
+                const centerLng = rg.vertices && rg.vertices.length > 0 ? rg.vertices[0][1] : 105.804817;
 
                 return `
                     <div class="data-item-card">
@@ -1633,8 +1633,8 @@
             }
             container.innerHTML = roads.map(rd => {
                 const classInfo = classifyRoad(rd.width);
-                const firstLat = rd.path;
-                const firstLng = rd.path[1];
+                const firstLat = rd.path && rd.path.length > 0 ? rd.path[0][0] : 21.028511;
+                const firstLng = rd.path && rd.path.length > 0 ? rd.path[0][1] : 105.804817;
 
                 return `
                     <div class="data-item-card">
