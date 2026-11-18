@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bản đồ An toàn PCCC Láng</title>
+    <title>Bản đồ An toàn PCCC & Cứu hộ - Web Base Vi mô Phường Láng</title>
     
     <!-- Nhúng thư viện CSS của Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -155,7 +155,7 @@
             transform: translate(-50%, -50%);
         }
 
-        /* 4. THANH ĐIỀU KHIỂN VÀ FLY-TO Ở PHÍA TRÊN */
+        /* 4. THANH ĐIỀU KHIỂN VÀ FLY-TO (CHỈ HIỆN KHI BẬT CHẾ ĐỘ THU THẬP/CHẤM ĐIỂM) */
         .collector-top-bar {
             position: fixed;
             top: 15px;
@@ -167,12 +167,16 @@
             color: #ffffff;
             padding: 10px 16px;
             border-radius: 20px;
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             gap: 8px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
             max-width: 95vw;
+        }
+
+        .collector-top-bar.active {
+            display: flex;
         }
 
         /* Ô NHẬP TỌA ĐỘ FLY-TO */
@@ -273,23 +277,25 @@
             text-align: center;
         }
 
-        /* BẢNG ĐIỀU KHIỂN BẢN ĐỒ NHIỆT (HEATMAP CONTROL BOX) */
+        /* BẢNG ĐIỀU KHIỂN BẢN ĐỒ NHIỆT (GÓC TRÊN BÊN TRÁI TRÁNH CHE NÚT LAYERS) */
         .heatmap-control-panel {
             position: fixed;
             top: 15px;
-            right: 15px;
+            left: 15px;
             z-index: 1000;
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(10px);
-            padding: 10px 14px;
-            border-radius: 18px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            background: rgba(255, 255, 255, 0.93);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 14px;
+            border-radius: 20px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.6) inset;
             display: flex;
             flex-direction: column;
             gap: 8px;
             font-size: 11px;
             font-weight: 700;
             color: #1e293b;
+            width: 235px;
         }
 
         .heatmap-toggle-btn {
@@ -302,6 +308,7 @@
             cursor: pointer;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3);
             transition: all 0.2s;
@@ -337,6 +344,50 @@
             background: #2563eb;
             color: white;
             box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+        }
+
+        /* Thanh trượt Opacity */
+        .opacity-slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 2px;
+        }
+
+        .opacity-slider {
+            width: 100%;
+            height: 5px;
+            border-radius: 5px;
+            background: #cbd5e1;
+            outline: none;
+            accent-color: #2563eb;
+            cursor: pointer;
+        }
+
+        /* Thang đo dải màu Gradient nằm ngang */
+        .heatmap-legend-horizontal {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 4px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .legend-gradient-bar {
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(to right, #7f1d1d 0%, #ef4444 25%, #f97316 50%, #eab308 75%, #10b981 100%);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset;
+        }
+
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8.5px;
+            color: #475569;
+            font-weight: 700;
         }
 
         /* 5. MODAL POPUP VÀ BẢNG TAB DỮ LIỆU */
@@ -603,7 +654,7 @@
             align-items: center;
         }
 
-        /* Pulse animation */
+        /* Hiệu ứng Pulse */
         @keyframes pulse {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
             70% { transform: scale(1.15); box-shadow: 0 0 0 14px rgba(37, 99, 235, 0); }
@@ -625,16 +676,39 @@
     <!-- WIDGET TỌA ĐỘ REALTIME GÓC DƯỚI BÊN TRÁI -->
     <div id="realtimeCoords">📍 Lat: 21.028511 | Lng: 105.804817</div>
 
-    <!-- BẢNG ĐIỀU KHIỂN BẢN ĐỒ NHIỆT (HEATMAP CONTROL PANEL) -->
+    <!-- BẢNG ĐIỀU KHIỂN BẢN ĐỒ NHIỆT -->
     <div class="heatmap-control-panel">
         <button class="heatmap-toggle-btn off" id="btnToggleHeatmap" onclick="toggleSafetyHeatmap()">
             <span>🛡️ Bản đồ Nhiệt An toàn</span>
         </button>
+        
         <div style="font-size: 9.5px; color: #64748b; font-weight: 700;">ĐỘ PHÂN GIẢI LƯỚI:</div>
         <div class="res-selector-group">
             <button class="res-btn" id="res20m" onclick="setHeatmapResolution(20)">20m (Mượt)</button>
             <button class="res-btn active" id="res10m" onclick="setHeatmapResolution(10)">10m (Chuẩn)</button>
             <button class="res-btn" id="res5m" onclick="setHeatmapResolution(5)">5m (Nét)</button>
+        </div>
+
+        <!-- THANH TRUỢT ĐIỀU CHỈNH ĐỘ TRONG SUỐT (OPACITY SLIDER) -->
+        <div class="opacity-slider-container">
+            <div style="display: flex; justify-content: space-between; font-size: 9.5px; color: #64748b; font-weight: 700;">
+                <span>ĐỘ TRONG SUỐT (OPACITY):</span>
+                <span id="opacityValText" style="color: #2563eb; font-weight: 800;">40%</span>
+            </div>
+            <input type="range" class="opacity-slider" id="heatmapOpacitySlider" min="0.1" max="0.9" step="0.05" value="0.4" oninput="changeHeatmapOpacity(this.value)" />
+        </div>
+
+        <!-- THANG ĐO LEGEND NẰM NGANG (GRADIENT 100 CẤP MÀU) -->
+        <div class="heatmap-legend-horizontal">
+            <div style="font-size: 9px; color: #64748b; font-weight: 800;">THANG ĐO MỨC ĐỘ AN TOÀN (0 - 100):</div>
+            <div class="legend-gradient-bar"></div>
+            <div class="legend-labels">
+                <span>0 (Thấp)</span>
+                <span>25</span>
+                <span>50</span>
+                <span>75</span>
+                <span>100 (An toàn)</span>
+            </div>
         </div>
     </div>
 
@@ -690,13 +764,13 @@
             <span class="btn-label">GPS</span>
         </button>
 
-        <!-- Nút 2: Nút Đánh dấu / Thu thập địa điểm & vùng & đường -->
+        <!-- Nút 2: Thu thập địa điểm/vùng/đường -->
         <button class="action-btn" id="toggleCollectBtn" onclick="toggleCollectMode()" title="Đánh dấu địa điểm/vùng/đường">
             <span class="btn-icon">🎯</span>
             <span class="btn-label">Thu thập</span>
         </button>
 
-        <!-- Nút 3: Nút Xem Tab dữ liệu đã thu thập -->
+        <!-- Nút 3: Xem Tab dữ liệu đã thu thập -->
         <button class="action-btn" onclick="openDataManagementModal()" title="Dữ liệu đã thu thập">
             <span class="btn-icon">🗂️</span>
             <span class="btn-label">Dữ liệu</span>
@@ -761,7 +835,7 @@
             
             <div class="form-group">
                 <label class="form-label">Tên khu vực / Tên vùng</label>
-                <input type="text" id="regionNameInput" class="form-input" placeholder="Ví dụ: Ao Đình Phường X, Ngõ hẹp khu A..." />
+                <input type="text" id="regionNameInput" class="form-input" placeholder="Ví dụ: Ao Đình Phường Láng, Ngõ hẹp khu A..." />
             </div>
 
             <div class="form-group">
@@ -950,13 +1024,13 @@
         const drawTempGroup = L.layerGroup().addTo(map);
         const heatmapLayerGroup = L.layerGroup().addTo(map);
 
-        // BỘ LẮP ĐẶT ĐỌC VÀ HIỂN THỊ TỌA ĐỘ REALTIME
+        // ĐỌC VÀ HIỂN THỊ TỌA ĐỘ REALTIME KHI DI CHUYỂN BẢN ĐỒ
         map.on('move', function() {
             const center = map.getCenter();
             document.getElementById('realtimeCoords').innerText = `📍 Lat: ${center.lat.toFixed(6)} | Lng: ${center.lng.toFixed(6)}`;
         });
 
-        // Bộ quản lý bật/tắt Layer
+        // Bộ quản lý bật/tắt Layer ở góc trên bên phải
         const overlayLayers = {
             "📍 Lớp Các Điểm Thu Thập": savedPointsGroup,
             "🔷 Lớp Các Vùng Thu Thập": savedRegionsGroup,
@@ -991,12 +1065,12 @@
         }
 
         // ==========================================
-        // 4. HÀM HÌNH HỌC TÍNH KHOẢNG CÁCH POINT-TO-SEGMENT
+        // 4. THUẬT TOÁN HÌNH HỌC KHÔNG GIAN (POINT-TO-SEGMENT & POLYGON INCLUSION)
         // ==========================================
         function pointToSegmentDistance(p, p1, p2) {
             const x = p.lng, y = p.lat;
-            const x1 = p1[1], y1 = p1[0];
-            const x2 = p2[1], y2 = p2[0];
+            const x1 = p1.lng, y1 = p1.lat;
+            const x2 = p2.lng, y2 = p2.lat;
             
             const A = x - x1;
             const B = y - y1;
@@ -1024,7 +1098,35 @@
             if (!roadPath || roadPath.length < 2) return 999999;
             let minDistance = 999999;
             for (let i = 0; i < roadPath.length - 1; i++) {
-                const dist = pointToSegmentDistance({lat: targetLat, lng: targetLng}, roadPath[i], roadPath[i+1]);
+                const p1 = { lat: roadPath[i][0], lng: roadPath[i][1] };
+                const p2 = { lat: roadPath[i+1][0], lng: roadPath[i+1][1] };
+                const dist = pointToSegmentDistance({lat: targetLat, lng: targetLng}, p1, p2);
+                if (dist < minDistance) minDistance = dist;
+            }
+            return minDistance;
+        }
+
+        function isPointInPolygon(p, polygon) {
+            let x = p.lng, y = p.lat;
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                let xi = polygon[i][1], yi = polygon[i][0];
+                let xj = polygon[j][1], yj = polygon[j][0];
+                let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function getMinDistanceToPolygon(targetLat, targetLng, vertices) {
+            if (!vertices || vertices.length < 3) return 999999;
+            if (isPointInPolygon({lat: targetLat, lng: targetLng}, vertices)) return 0;
+            
+            let minDistance = 999999;
+            for (let i = 0; i < vertices.length - 1; i++) {
+                const p1 = { lat: vertices[i][0], lng: vertices[i][1] };
+                const p2 = { lat: vertices[i+1][0], lng: vertices[i+1][1] };
+                const dist = pointToSegmentDistance({lat: targetLat, lng: targetLng}, p1, p2);
                 if (dist < minDistance) minDistance = dist;
             }
             return minDistance;
@@ -1308,7 +1410,43 @@
         }
 
         // ==========================================
-        // 7. THUẬT TOÁN CHẤM ĐIỂM MINH BẠCH & PHẠT NGUY CƠ (AHP)
+        // 7. HÀM NỘI SUY MÀU NỀN 100 CẤP ĐỘ MƯỢT MÀ (GRADIENT COLOR MAPPING)
+        // ==========================================
+        function getSmoothColor(score) {
+            const s = Math.max(0, Math.min(100, score));
+            let r, g, b;
+
+            if (s <= 25) {
+                // Từ Đỏ đô thẫm (#7f1d1d) đến Đỏ tươi (#ef4444)
+                const t = s / 25;
+                r = Math.round(127 + t * (239 - 127));
+                g = Math.round(29 + t * (68 - 29));
+                b = Math.round(29 + t * (68 - 29));
+            } else if (s <= 50) {
+                // Từ Đỏ tươi (#ef4444) đến Cam (#f97316)
+                const t = (s - 25) / 25;
+                r = Math.round(239 + t * (249 - 239));
+                g = Math.round(68 + t * (115 - 68));
+                b = Math.round(68 + t * (22 - 68));
+            } else if (s <= 75) {
+                // Từ Cam (#f97316) đến Vàng (#eab308)
+                const t = (s - 50) / 25;
+                r = Math.round(249 + t * (234 - 249));
+                g = Math.round(115 + t * (179 - 115));
+                b = Math.round(22 + t * (8 - 22));
+            } else {
+                // Từ Vàng (#eab308) đến Xanh lá tươi (#10b981)
+                const t = (s - 75) / 25;
+                r = Math.round(234 + t * (16 - 234));
+                g = Math.round(179 + t * (185 - 179));
+                b = Math.round(8 + t * (129 - 8));
+            }
+
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // ==========================================
+        // 8. THUẬT TOÁN CHẤM ĐIỂM MINH BẠCH (ĐÃ TÍCH HỢP QUÉT SÔNG/HỒ/AO REIGONS)
         // ==========================================
         function openSafetyScoreModal() {
             if (!isCollectModeActive) {
@@ -1327,6 +1465,7 @@
 
         function calculateSafetyScore(targetLat, targetLng, isInternalReturn = false) {
             const points = isFirebaseConnected ? (window.cachedPoints || []) : getFromLocalStorage('points');
+            const regions = isFirebaseConnected ? (window.cachedRegions || []) : getFromLocalStorage('regions');
             const roads = isFirebaseConnected ? (window.cachedRoads || []) : getFromLocalStorage('roads');
             const ppgis = isFirebaseConnected ? (window.cachedPPGIS || []) : getFromLocalStorage('ppgis');
 
@@ -1341,20 +1480,31 @@
                     if (d < minDistFireStation) minDistFireStation = d;
                 });
             } else {
-                minDistFireStation = 3.2; // Mặc định ước lượng
+                minDistFireStation = 3.2;
             }
 
-            // 2. Cự ly Nguồn nước (Khống chế bán kính 500m)
+            // 2. Cự ly Nguồn nước (BAO GỒM CẢ TRỤ NƯỚC VÀ SÔNG/HỒ/AO REGIONS)
             const waterPoints = points.filter(p => p.category === 'water_point');
+            const waterSurfaces = regions.filter(r => r.category === 'water_surface');
+
             let minDistWater = 9999;
             let hasWaterInRadius = false;
-            if (waterPoints.length > 0) {
-                waterPoints.forEach(wp => {
-                    const d = map.distance([targetLat, targetLng], [wp.lat, wp.lng]);
+
+            // Quét các Điểm cấp nước (Trụ/Họng)
+            waterPoints.forEach(wp => {
+                const d = map.distance([targetLat, targetLng], [wp.lat, wp.lng]);
+                if (d < minDistWater) minDistWater = d;
+            });
+
+            // Quét ranh giới các Vùng mặt nước (Sông/Hồ/Ao)
+            waterSurfaces.forEach(ws => {
+                if (ws.vertices && ws.vertices.length >= 3) {
+                    const d = getMinDistanceToPolygon(targetLat, targetLng, ws.vertices);
                     if (d < minDistWater) minDistWater = d;
-                });
-                if (minDistWater <= 500) hasWaterInRadius = true;
-            }
+                }
+            });
+
+            if (minDistWater <= 500) hasWaterInRadius = true;
 
             // 3. Đo khoảng cách tới Ngõ gần nhất theo Point-to-Segment
             let minAlleyWidth = 4.0;
@@ -1393,7 +1543,7 @@
             else if (minDistFireStation > 3) scoreFireStation = 40;
             else if (minDistFireStation > 1.5) scoreFireStation = 75;
 
-            let scoreWater = 0; // Nếu không có trong 500m -> 0đ
+            let scoreWater = 0;
             if (hasWaterInRadius) {
                 if (minDistWater > 300) scoreWater = 40;
                 else if (minDistWater > 150) scoreWater = 70;
@@ -1418,14 +1568,12 @@
                 penaltyNotes.push("🔴 Phạt ngõ hẹp <2m (Cấm xe cơ giới)");
             }
 
-            // Phạt nếu có phản ánh vật cản PPGIS gần vị trí trong 50m
             const nearbyObstacles = ppgis.filter(p => p.category === 'obstacle' && map.distance([targetLat, targetLng], [p.lat, p.lng]) <= 50);
             if (nearbyObstacles.length > 0) {
                 penaltyFactor *= 0.65;
                 penaltyNotes.push("🚫 Phạt vật cản PPGIS bít lối gần đây");
             }
 
-            // Thưởng nếu có Tổ liên gia/Bình chữa cháy công cộng gần 40m
             const nearbyExtinguishers = ppgis.filter(p => p.category === 'extinguisher' && map.distance([targetLat, targetLng], [p.lat, p.lng]) <= 40);
             if (nearbyExtinguishers.length > 0) {
                 penaltyFactor *= 1.2;
@@ -1463,7 +1611,7 @@
                     <b style="color: #2563eb;">${scoreFireStation}đ ${!hasRealStationData ? '<span style="font-size:9px; color:#ef4444;">(Ước lượng)</span>' : ''}</b>
                 </div>
                 <div class="score-detail-item">
-                    <span>💧 Họng nước PCCC (~${hasWaterInRadius ? Math.round(minDistWater) + 'm' : '>500m'})</span>
+                    <span>💧 Họng/Nguồn nước PCCC (~${hasWaterInRadius ? Math.round(minDistWater) + 'm' : '>500m'})</span>
                     <b style="color: ${hasWaterInRadius ? '#2563eb' : '#ef4444'};">${scoreWater}đ ${!hasWaterInRadius ? '<span style="font-size:9px; color:#ef4444;">(Không có trong 500m ⚠️)</span>' : ''}</b>
                 </div>
                 <div class="score-detail-item">
@@ -1485,10 +1633,21 @@
         }
 
         // ==========================================
-        // 8. TÍNH NĂNG BẢN ĐỒ NHIỆT AN TOÀN (SAFETY HEATMAP)
+        // 9. QUẢN LÝ BẢN ĐỒ NHIỆT & ĐỘ TRONG SUỐT OPACITY
         // ==========================================
         let isHeatmapActive = false;
-        let currentGridResolution = 10; // 20m, 10m, 5m
+        let currentGridResolution = 10;
+        let heatmapFillOpacity = 0.4;
+
+        function changeHeatmapOpacity(val) {
+            heatmapFillOpacity = parseFloat(val);
+            document.getElementById('opacityValText').innerText = Math.round(heatmapFillOpacity * 100) + "%";
+            heatmapLayerGroup.eachLayer(layer => {
+                if (layer.setStyle) {
+                    layer.setStyle({ fillOpacity: heatmapFillOpacity });
+                }
+            });
+        }
 
         function toggleSafetyHeatmap() {
             isHeatmapActive = !isHeatmapActive;
@@ -1514,7 +1673,7 @@
         function renderSafetyHeatmap() {
             heatmapLayerGroup.clearLayers();
             const bounds = map.getBounds();
-            const stepDeg = (currentGridResolution * 0.000009); // Chuyển mét sang độ Lat/Lng
+            const stepDeg = (currentGridResolution * 0.000009);
 
             const south = bounds.getSouth();
             const north = bounds.getNorth();
@@ -1527,15 +1686,13 @@
                     const centerLng = lng + stepDeg / 2;
                     const score = calculateSafetyScore(centerLat, centerLng, true);
 
-                    let fillColor = '#ef4444'; // 🔴 0-39đ
-                    if (score >= 80) fillColor = '#10b981'; // 🟢 80-100đ
-                    else if (score >= 60) fillColor = '#2563eb'; // 🔵 60-79đ
-                    else if (score >= 40) fillColor = '#f97316'; // 🟠 40-59đ
+                    // Lấy màu sắc nội suy 100 cấp mượt mà
+                    const smoothColor = getSmoothColor(score);
 
                     const rect = L.rectangle([[lat, lng], [lat + stepDeg, lng + stepDeg]], {
                         color: 'transparent',
-                        fillColor: fillColor,
-                        fillOpacity: 0.38,
+                        fillColor: smoothColor,
+                        fillOpacity: heatmapFillOpacity,
                         stroke: false
                     });
                     heatmapLayerGroup.addLayer(rect);
@@ -1544,7 +1701,7 @@
         }
 
         // ==========================================
-        // 9. LƯU THÔNG TIN VÀO DATABASE
+        // 10. LƯU THÔNG TIN VÀO DATABASE
         // ==========================================
         function savePointToDatabase() {
             const name = document.getElementById('pointNameInput').value.trim() || "Điểm chưa đặt tên";
@@ -1654,7 +1811,7 @@
         }
 
         // ==========================================
-        // 10. TẢI VÀ VẼ DỮ LIỆU LÊN BẢN ĐỒ
+        // 11. TẢI VÀ VẼ DỮ LIỆU LÊN BẢN ĐỒ
         // ==========================================
         function loadAndRenderData() {
             savedPointsGroup.clearLayers();
@@ -1673,11 +1830,12 @@
 
                     const data = snapshot.val() || {};
                     window.cachedPoints = Object.values(data.points || {});
+                    window.cachedRegions = Object.values(data.regions || {});
                     window.cachedRoads = Object.values(data.roads || {});
                     window.cachedPPGIS = Object.values(data.ppgis || {});
 
                     renderPoints(window.cachedPoints);
-                    renderRegions(Object.values(data.regions || {}));
+                    renderRegions(window.cachedRegions);
                     renderRoads(window.cachedRoads);
                     renderPPGIS(window.cachedPPGIS);
 
@@ -1685,11 +1843,12 @@
                 });
             } else {
                 window.cachedPoints = getFromLocalStorage('points');
+                window.cachedRegions = getFromLocalStorage('regions');
                 window.cachedRoads = getFromLocalStorage('roads');
                 window.cachedPPGIS = getFromLocalStorage('ppgis');
 
                 renderPoints(window.cachedPoints);
-                renderRegions(getFromLocalStorage('regions'));
+                renderRegions(window.cachedRegions);
                 renderRoads(window.cachedRoads);
                 renderPPGIS(window.cachedPPGIS);
 
@@ -1779,7 +1938,7 @@
         }
 
         // ==========================================
-        // 11. QUẢN LÝ MODAL & TAB DỮ LIỆU
+        // 12. QUẢN LÝ MODAL & TAB DỮ LIỆU
         // ==========================================
         function openDataManagementModal() {
             renderDataManagementLists();
@@ -1945,3 +2104,4 @@
         };
     </script>
 </body>
+</html>
