@@ -1463,11 +1463,41 @@
             calculateSafetyScore(center.lat, center.lng, false);
         }
 
-        function calculateSafetyScore(targetLat, targetLng, isInternalReturn = false) {
+function calculateSafetyScore(targetLat, targetLng, isInternalReturn = false) {
             const points = isFirebaseConnected ? (window.cachedPoints || []) : getFromLocalStorage('points');
             const regions = isFirebaseConnected ? (window.cachedRegions || []) : getFromLocalStorage('regions');
             const roads = isFirebaseConnected ? (window.cachedRoads || []) : getFromLocalStorage('roads');
             const ppgis = isFirebaseConnected ? (window.cachedPPGIS || []) : getFromLocalStorage('ppgis');
+
+            //  ƯU TIÊN TUYỆT ĐỐI CHO VÙNG MẶT NƯỚC 
+            const waterSurfaces = regions.filter(r => r.category === 'water_surface');
+            let isInsideWater = false;
+            waterSurfaces.forEach(ws => {
+                if (ws.vertices && ws.vertices.length >= 3) {
+                    if (isPointInPolygon({ lat: targetLat, lng: targetLng }, ws.vertices)) {
+                        isInsideWater = true;
+                    }
+                }
+            });
+            if (isInsideWater) {
+                if (isInternalReturn) return 100;
+                // Nếu người dùng chấm điểm trực tiếp trên sông/hồ
+                document.getElementById('scoreValueDisplay').innerText = "100/100";
+                const badgeEl = document.getElementById('scoreBadgeDisplay');
+                badgeEl.innerText = "🟢 VÙNG MẶT NƯỚC AN TOÀN TUYỆT ĐỐI";
+                badgeEl.style.backgroundColor = "#10b981";
+                document.getElementById('scoreBreakdownContainer').innerHTML = `
+                    <div class="score-detail-item">
+                        <span>🌊 Khu vực mặt nước tự nhiên (Sông/Hồ/Ao)</span>
+                        <b style="color: #10b981;">100đ (An toàn tuyệt đối)</b>
+                    </div>
+                    <div style="padding:8px; border-radius:10px; background:#ecfdf5; color:#065f46; font-size:10.5px; font-weight:700;">
+                        🟢 Vùng nước tự nhiên không có nguy cơ cháy nổ, đồng thời đóng vai trò là nguồn cấp nước chữa cháy trực tiếp.
+                    </div>
+                `;
+                openModal('scoreResultModal');
+                return;
+            }
 
             // 1. Cự ly Trạm PCCC
             const fireStations = points.filter(p => p.category === 'pccc_station');
