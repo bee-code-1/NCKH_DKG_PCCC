@@ -1515,7 +1515,7 @@ function calculateSafetyScore(targetLat, targetLng, isInternalReturn = false) {
 
             // 2. Cự ly Nguồn nước (BAO GỒM CẢ TRỤ NƯỚC VÀ SÔNG/HỒ/AO REGIONS)
             const waterPoints = points.filter(p => p.category === 'water_point');
-            const waterSurfaces = regions.filter(r => r.category === 'water_surface');
+            const waterSurfacesList = regions.filter(r => r.category === 'water_surface');
 
             let minDistWater = 9999;
             let hasWaterInRadius = false;
