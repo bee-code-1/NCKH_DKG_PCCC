@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bản đồ An toàn PCCC & Cứu hộ - Web Base Phường Láng</title>
+    <title>Bản đồ An toàn PCCC & Cứu hộ - Web Base Vi mô Phường Láng</title>
     
     <!-- Thư viện CSS Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -577,7 +577,8 @@
             margin-top: 3px;
         }
 
-        .badge-pccc { background: #fee2e2; color: #dc2626; }
+        .badge-fire-station { background: #fee2e2; color: #dc2626; }
+        .badge-extinguisher { background: #fef3c7; color: #d97706; }
         .badge-water { background: #dbeafe; color: #2563eb; }
         .badge-hospital { background: #dcfce7; color: #16a34a; }
         .badge-water-surface { background: #e0f2fe; color: #0284c7; }
@@ -765,7 +766,7 @@
             <h3 class="modal-title">📌 Thêm Điểm Mới</h3>
             <div class="form-group">
                 <label class="form-label">Tên địa điểm / Tên họng nước / Bệnh viện</label>
-                <input type="text" id="pointNameInput" class="form-input" placeholder="Ví dụ: Bệnh viện Bạch Mai, Trụ nước hẻm 45..." />
+                <input type="text" id="pointNameInput" class="form-input" placeholder="Ví dụ: Bệnh viện Bạch Mai, Điểm bình PCCC ngách 12..." />
             </div>
             <div class="form-group">
                 <label class="form-label">Tọa độ đã chọn</label>
@@ -775,8 +776,12 @@
                 <label class="form-label">Phân loại địa điểm</label>
                 <div class="form-radio-group">
                     <label class="radio-option">
-                        <input type="radio" name="pointCategory" value="pccc_station" checked />
-                        <span>🧯 Bình cứu hoả công cộng</span>
+                        <input type="radio" name="pointCategory" value="fire_station" checked />
+                        <span>🚒 Trạm cứu hỏa / Đội PCCC</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="pointCategory" value="pccc_station" />
+                        <span>🧯 Bình chữa cháy công cộng</span>
                     </label>
                     <label class="radio-option">
                         <input type="radio" name="pointCategory" value="water_point" />
@@ -885,7 +890,7 @@
             <button class="modal-close-btn" onclick="closeModal('scoreResultModal')">✕</button>
             <h3 class="modal-title">🛡️ Đánh Giá An Toàn PCCC</h3>
             <div class="score-display-box">
-                <div style="font-size: 11px; opacity: 0.8; font-weight: 700;">CHỈ SỐ AN TOÀN PCCC (AHP SCORE)</div>
+                <div style="font-size: 11px; opacity: 0.8; font-weight: 700;">CHỈ SỐ AN TOÀN PCCC (AHP SCORE 100%)</div>
                 <div class="score-number" id="scoreValueDisplay">--</div>
                 <div class="score-level-badge" id="scoreBadgeDisplay">--</div>
             </div>
@@ -1344,7 +1349,7 @@
             alert("✅ Đã gửi phản ánh PPGIS thành công!");
         }
 
-        // 7. THUẬT TOÁN MÀU GRADIENT 100 CẤP MƯỢT MA
+        // 7. THUẬT TOÁN MÀU GRADIENT 100 CẤP MƯỢT MÀ
         function getSmoothColor(score) {
             const s = Math.max(0, Math.min(100, score));
             let r, g, b;
@@ -1374,7 +1379,7 @@
             return `rgb(${r}, ${g}, ${b})`;
         }
 
-        // 8. THUẬT TOÁN CHẤM ĐIỂM MINH BẠCH (FIX XONG 5 LỖI LOGIC)
+        // 8. THUẬT TOÁN CHẤM ĐIỂM MINH BẠCH (TRỌNG SỐ AHP MỚI: ROAD 30%, WATER 25%, FIRE STATION 20%, EXTINGUISHER 20%, HOSPITAL 5%)
         function openSafetyScoreModal() {
             if (!isCollectModeActive) {
                 isCollectModeActive = true;
@@ -1423,22 +1428,35 @@
                 return 100;
             }
 
-            // 1. TRẠM PCCC (CỰ LY LỘ GIỚI NETWORK DETOUR FACTOR = 1.35)
-            const fireStations = points.filter(p => p.category === 'pccc_station');
-            let minDistFireStation = 999;
-            let hasRealStationData = false;
-            if (fireStations.length > 0) {
-                hasRealStationData = true;
-                fireStations.forEach(st => {
-                    const directDist = map.distance([targetLat, targetLng], [st.lat, st.lng]) / 1000;
-                    const networkDist = directDist * 1.35;
-                    if (networkDist < minDistFireStation) minDistFireStation = networkDist;
+            // 1. KHẢ NĂNG TIẾP CẬN NGÕ GIAO THÔNG (TRỌNG SỐ 30%)
+            let minAlleyWidth = 4.0;
+            let isDirectlyOnAlley = false;
+            let minDistRoadMeters = 99999;
+
+            if (roads.length > 0) {
+                roads.forEach(rd => {
+                    if (rd.path && rd.path.length >= 2) {
+                        const dist = getMinDistanceToRoad(targetLat, targetLng, rd.path);
+                        if (dist < minDistRoadMeters) {
+                            minDistRoadMeters = dist;
+                            if (dist <= 60) {
+                                minAlleyWidth = rd.width || 4.0;
+                                isDirectlyOnAlley = true;
+                            }
+                        }
+                    }
                 });
-            } else {
-                minDistFireStation = 3.2;
             }
 
-            // 2. NGUỒN NƯỚC TÍNH TỪ CẠNH SÔNG/HỒ HƯỚNG RA NGOÀI (EDGE BUFFER)
+            let scoreRoad = 100;
+            if (isDirectlyOnAlley) {
+                if (minAlleyWidth < 2.0) scoreRoad = 15;
+                else if (minAlleyWidth < 3.5) scoreRoad = 45;
+                else if (minAlleyWidth < 5.0) scoreRoad = 80;
+                else scoreRoad = 100;
+            }
+
+            // 2. NGUỒN NƯỚC PCCC (TRỌNG SỐ 25%)
             const waterPoints = points.filter(p => p.category === 'water_point');
             let minDistWater = 9999;
 
@@ -1456,28 +1474,56 @@
             });
 
             let hasWaterInRadius = (minDistWater <= 500);
-
-            // 3. ĐO NGHỄN NGÕ (CHỈ TÍNH PHẠT KHI NẰM TRONG BÁN KÍNH TIẾP CẬN <=60M)
-            let minAlleyWidth = 4.0;
-            let isDirectlyOnAlley = false;
-            let minDistRoadMeters = 9999;
-
-            if (roads.length > 0) {
-                roads.forEach(rd => {
-                    if (rd.path && rd.path.length >= 2) {
-                        const dist = getMinDistanceToRoad(targetLat, targetLng, rd.path);
-                        if (dist < minDistRoadMeters) {
-                            minDistRoadMeters = dist;
-                            if (dist <= 60) {
-                                minAlleyWidth = rd.width || 4.0;
-                                isDirectlyOnAlley = true;
-                            }
-                        }
-                    }
-                });
+            let scoreWater = 0;
+            if (hasWaterInRadius) {
+                if (minDistWater > 300) scoreWater = 40;
+                else if (minDistWater > 150) scoreWater = 70;
+                else scoreWater = 100;
             }
 
-            // 4. BỆNH VIỆN
+            // 3. TRẠM CỨU HỎA CHUYÊN DỤNG (TRỌNG SỐ 20%)
+            const fireStations = points.filter(p => p.category === 'fire_station');
+            let minDistFireStation = 999;
+            let hasRealFireStationData = false;
+            if (fireStations.length > 0) {
+                hasRealFireStationData = true;
+                fireStations.forEach(st => {
+                    const directDist = map.distance([targetLat, targetLng], [st.lat, st.lng]) / 1000;
+                    const networkDist = directDist * 1.35;
+                    if (networkDist < minDistFireStation) minDistFireStation = networkDist;
+                });
+            } else {
+                minDistFireStation = 3.2; // Tạm tính cự ly trung bình
+            }
+
+            let scoreFireStation = 10;
+            if (minDistFireStation <= 1.5) scoreFireStation = 100;
+            else if (minDistFireStation <= 3.0) scoreFireStation = 75;
+            else if (minDistFireStation <= 5.0) scoreFireStation = 40;
+            else scoreFireStation = 10;
+
+            // 4. BÌNH CHỮA CHÁY CÔNG CỘNG (TRỌNG SỐ 20%)
+            const extinguishers = points.filter(p => p.category === 'pccc_station');
+            let minDistExtinguisher = 9999;
+            extinguishers.forEach(ext => {
+                const d = map.distance([targetLat, targetLng], [ext.lat, ext.lng]);
+                if (d < minDistExtinguisher) minDistExtinguisher = d;
+            });
+
+            ppgis.filter(p => p.category === 'extinguisher').forEach(ext => {
+                const d = map.distance([targetLat, targetLng], [ext.lat, ext.lng]);
+                if (d < minDistExtinguisher) minDistExtinguisher = d;
+            });
+
+            let hasExtinguisherInRadius = (minDistExtinguisher <= 120);
+            let scoreExtinguisher = 0;
+            if (hasExtinguisherInRadius) {
+                if (minDistExtinguisher <= 30) scoreExtinguisher = 100;
+                else if (minDistExtinguisher <= 70) scoreExtinguisher = 70;
+                else scoreExtinguisher = 40;
+            }
+
+            // 5. BỆNH VIỆN / CƠ SỞ Y TẾ (TRỌNG SỐ 5%)
             const hospitals = points.filter(p => p.category === 'hospital');
             let minDistHospital = 999;
             let hasHospitalData = false;
@@ -1492,29 +1538,10 @@
                 minDistHospital = 3.5;
             }
 
-            // --- CHẤM ĐIỂM THÀNH PHẦN ---
-            let scoreFireStation = 100;
-            if (minDistFireStation > 5) scoreFireStation = 10;
-            else if (minDistFireStation > 3) scoreFireStation = 40;
-            else if (minDistFireStation > 1.5) scoreFireStation = 75;
-
-            let scoreWater = 0;
-            if (hasWaterInRadius) {
-                if (minDistWater > 300) scoreWater = 40;
-                else if (minDistWater > 150) scoreWater = 70;
-                else scoreWater = 100;
-            }
-
-            let scoreRoad = 100;
-            if (isDirectlyOnAlley) {
-                if (minAlleyWidth < 2.0) scoreRoad = 15;
-                else if (minAlleyWidth < 3.5) scoreRoad = 45;
-                else if (minAlleyWidth < 5.0) scoreRoad = 80;
-            }
-
-            let scoreHospital = 100;
-            if (minDistHospital > 6) scoreHospital = 30;
-            else if (minDistHospital > 3) scoreHospital = 70;
+            let scoreHospital = 30;
+            if (minDistHospital <= 3.0) scoreHospital = 100;
+            else if (minDistHospital <= 6.0) scoreHospital = 70;
+            else scoreHospital = 30;
 
             // --- HỆ SỐ PHẠT NGUY CƠ ---
             let penaltyFactor = 1.0;
@@ -1538,7 +1565,8 @@
                 penaltyNotes.push("🟢 Thưởng điểm có Tổ liên gia PCCC tại chỗ");
             }
 
-            let rawScore = (scoreFireStation * 0.35) + (scoreWater * 0.30) + (scoreRoad * 0.25) + (scoreHospital * 0.10);
+            // TỔNG ĐIỂM TRỌNG SỐ AHP MỚI: Road 30% + Water 25% + FireStation 20% + Extinguisher 20% + Hospital 5%
+            let rawScore = (scoreRoad * 0.30) + (scoreWater * 0.25) + (scoreFireStation * 0.20) + (scoreExtinguisher * 0.20) + (scoreHospital * 0.05);
             let finalScore = Math.min(100, Math.max(0, Math.round(rawScore * penaltyFactor)));
 
             if (isInternalReturn) return finalScore;
@@ -1563,25 +1591,29 @@
 
             let breakdownHtml = `
                 <div class="score-detail-item">
-                    <span>🚒 Trạm PCCC gần nhất (~${minDistFireStation.toFixed(1)}km lộ giới)</span>
-                    <b style="color: #2563eb;">${scoreFireStation}đ ${!hasRealStationData ? '<span style="font-size:9px; color:#ef4444;">(Ước lượng)</span>' : ''}</b>
-                </div>
-                <div class="score-detail-item">
-                    <span>💧 Họng/Mặt nước PCCC (~${hasWaterInRadius ? Math.round(minDistWater) + 'm vòi rồng' : '>500m'})</span>
-                    <b style="color: ${hasWaterInRadius ? '#2563eb' : '#ef4444'};">${scoreWater}đ ${!hasWaterInRadius ? '<span style="font-size:9px; color:#ef4444;">(Không có trong 500m ⚠️)</span>' : ''}</b>
-                </div>
-                <div class="score-detail-item">
-                    <span>🛣️ Độ rộng ngõ tiếp cận (${isDirectlyOnAlley ? '~' + minAlleyWidth + 'm' : 'Ngoài ngõ hẹp'})</span>
+                    <span>🛣️ Độ rộng ngõ tiếp cận (${isDirectlyOnAlley ? '~' + minAlleyWidth + 'm' : 'Ngoài ngõ hẹp'}) - 30%</span>
                     <b style="color: #2563eb;">${scoreRoad}đ</b>
                 </div>
                 <div class="score-detail-item">
-                    <span>🏥 Bệnh viện gần nhất (~${minDistHospital.toFixed(1)}km lộ giới)</span>
+                    <span>💧 Nguồn nước PCCC (~${hasWaterInRadius ? Math.round(minDistWater) + 'm vòi rồng' : '>500m'}) - 25%</span>
+                    <b style="color: ${hasWaterInRadius ? '#2563eb' : '#ef4444'};">${scoreWater}đ</b>
+                </div>
+                <div class="score-detail-item">
+                    <span>🚒 Trạm cứu hỏa (~${minDistFireStation.toFixed(1)}km lộ giới) - 20%</span>
+                    <b style="color: #2563eb;">${scoreFireStation}đ ${!hasRealFireStationData ? '<span style="font-size:9px; color:#ef4444;">(Ước lượng)</span>' : ''}</b>
+                </div>
+                <div class="score-detail-item">
+                    <span>🧯 Bình PCCC công cộng (~${hasExtinguisherInRadius ? Math.round(minDistExtinguisher) + 'm' : '>120m'}) - 20%</span>
+                    <b style="color: ${hasExtinguisherInRadius ? '#2563eb' : '#ef4444'};">${scoreExtinguisher}đ</b>
+                </div>
+                <div class="score-detail-item">
+                    <span>🏥 Bệnh viện gần nhất (~${minDistHospital.toFixed(1)}km lộ giới) - 5%</span>
                     <b style="color: #2563eb;">${scoreHospital}đ</b>
                 </div>
             `;
 
             if (penaltyNotes.length > 0) {
-                breakdownHtml += `<div style="padding:8px; border-radius:10px; background:#fff1f2; color:#be123c; font-size:10.5px; font-weight:700;">${penaltyNotes.join('<br>')}</div>`;
+                breakdownHtml += `<div style="padding:8px; border-radius:10px; background:#fff1f2; color:#be123c; font-size:10.5px; font-weight:700; margin-top:4px;">${penaltyNotes.join('<br>')}</div>`;
             }
 
             document.getElementById('scoreBreakdownContainer').innerHTML = breakdownHtml;
@@ -1798,7 +1830,8 @@
             pointsList.forEach(pt => {
                 let iconHtml = '📍';
                 let label = 'Điểm thu thập';
-                if (pt.category === 'pccc_station') { iconHtml = '🚒'; label = 'Trạm PCCC'; }
+                if (pt.category === 'fire_station') { iconHtml = '🚒'; label = 'Trạm cứu hỏa'; }
+                else if (pt.category === 'pccc_station') { iconHtml = '🧯'; label = 'Bình PCCC công cộng'; }
                 else if (pt.category === 'water_point') { iconHtml = '💧'; label = 'Điểm cấp nước'; }
                 else if (pt.category === 'hospital') { iconHtml = '🏥'; label = 'Bệnh viện'; }
 
@@ -1888,8 +1921,8 @@
                 const ppgisIcon = L.divIcon({
                     className: 'custom-ppgis-icon',
                     html: `<div style="font-size: 22px; filter: drop-shadow(0 3px 6px rgba(126,34,206,0.4)); animation: ppgisPulse 2s infinite;">${iconHtml}</div>`,
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 15]
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
                 });
 
                 L.marker([pg.lat, pg.lng], { icon: ppgisIcon })
@@ -1950,7 +1983,8 @@
             container.innerHTML = points.map(pt => {
                 let badgeClass = 'badge-water';
                 let badgeText = '📍 Điểm';
-                if (pt.category === 'pccc_station') { badgeClass = 'badge-pccc'; badgeText = '🚒 Trạm PCCC'; }
+                if (pt.category === 'fire_station') { badgeClass = 'badge-fire-station'; badgeText = '🚒 Trạm cứu hỏa'; }
+                else if (pt.category === 'pccc_station') { badgeClass = 'badge-extinguisher'; badgeText = '🧯 Bình PCCC công cộng'; }
                 else if (pt.category === 'water_point') { badgeClass = 'badge-water'; badgeText = '💧 Điểm cấp nước'; }
                 else if (pt.category === 'hospital') { badgeClass = 'badge-hospital'; badgeText = '🏥 Bệnh viện'; }
 
@@ -2008,7 +2042,7 @@
                 const classInfo = classifyRoad(rd.width);
                 let firstV = getVertexLatLng(rd.path ? rd.path[0] : null);
                 const firstLat = firstV ? firstV.lat : 21.028511;
-                const firstLng = firstV ? firstV.lng : 105.804817;
+                const firstLng = firstV ? firstLng.lng : 105.804817;
 
                 return `
                     <div class="data-item-card">
